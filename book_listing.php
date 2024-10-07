@@ -1,5 +1,5 @@
 <?php
-include('shopboiler.php');
+
 
 // Database connection details for Azure SQL
 $dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
