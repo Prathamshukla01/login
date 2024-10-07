@@ -1,19 +1,14 @@
-<!--day2 most of the error msgs not working properly 
-fix availability column not working
-debugging day 1-->
 <?php
 include('shopboiler.php');
-// Database connection details
-$dbHost = "localhost";
-$dbUser = "root";
-$dbPass = "";
-$dbName = "login";
 
-$conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
+// Database connection details for Azure SQL
+$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
+$dbUser = "azure"; // Azure username
+$dbPass = "bookhives@123"; // Azure password
+$dbName = "bookhivesdb"; // Azure database name
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+$conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+$conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
 $listingMessage = '';
 
@@ -23,20 +18,14 @@ if (isset($_POST['list_book'])) {
     $author_name = $_POST['author_name'];
     $category = $_POST['category'];
     $price = $_POST['price'];
-    $bookType= $_POST['book_type'];
+    $bookType = $_POST['book_type'];
     $quantity = $_POST['quantity'];
     $description = $_POST['description'];
 
-    
+    // Determine availability
+    $availability = $quantity == 0 ? 'Out of Stock' : 'Available';
 
-    // Check if the entered quantity is 0
-    if ($quantity == 0) {
-        $availability = 'Out of Stock';
-    } else {
-        $availability = 'Available';
-    }
-
-     // Get the username from the session
+    // Get the username from the session
     $username = $_SESSION['username'];
 
     // File upload handling
@@ -45,15 +34,12 @@ if (isset($_POST['list_book'])) {
     $uploadOk = 1;
     $imageFileType = strtolower(pathinfo($bookImage, PATHINFO_EXTENSION));
 
-    // Check if image file is a actual image or fake image
+    // Validate image file
     $check = getimagesize($_FILES["book_image"]["tmp_name"]);
     if ($check !== false) {
-        $uploadOk = 1;
-
         // Check image dimensions
-        $maxWidth = 800; 
-        $maxHeight = 600; 
-
+        $maxWidth = 800;
+        $maxHeight = 600;
         if ($check[0] > $maxWidth || $check[1] > $maxHeight) {
             $listingMessage = "Error: Image dimensions should be within {$maxWidth}x{$maxHeight} pixels.";
             $uploadOk = 0;
@@ -65,8 +51,8 @@ if (isset($_POST['list_book'])) {
 
     // Check if file already exists
     if (file_exists($bookImage)) {
-       $listingMessage = "Sorry, file already exists.";
-       $uploadOk = 0;
+        $listingMessage = "Sorry, file already exists.";
+        $uploadOk = 0;
     }
 
     // Check file size
@@ -74,106 +60,32 @@ if (isset($_POST['list_book'])) {
         $listingMessage = "Sorry, your file is too large.";
         $uploadOk = 0;
     }
-    
-    
-    // Allow certain file formats
-    if ($imageFileType != "jpg" && $imageFileType != "png" && $imageFileType != "jpeg"
-        && $imageFileType != "gif") {
+
+    // Allow only certain file formats
+    if (!in_array($imageFileType, ["jpg", "jpeg", "png", "gif"])) {
         $listingMessage = "Sorry, only JPG, JPEG, PNG & GIF files are allowed.";
         $uploadOk = 0;
     }
 
-    
-    //Check if $uploadOk is set to 0 by an error
-    if ($uploadOk == 0) {
-        $_SESSION['listingMessage'] = $listingMessage;
-    // if everything is ok, try to upload file
+    // Upload file and insert data
+    if ($uploadOk == 1 && move_uploaded_file($_FILES["book_image"]["tmp_name"], $bookImage)) {
+        // Insert book data into the database
+        $insertQuery = "INSERT INTO books (book_name, author_name, category, price, book_type, quantity, book_description, book_image, username, availability)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $conn->prepare($insertQuery);
+        $stmt->execute([$book_name, $author_name, $category, $price, $bookType, $quantity, $description, $bookImage, $username, $availability]);
+
+        $listingMessage = "Book listed successfully.";
     } else {
-        if (move_uploaded_file($_FILES["book_image"]["tmp_name"], $bookImage)) {
-            // Insert book data into the database
-           
-              $insertQuery = "INSERT INTO books (book_name, author_name,category, price,book_type,quantity,book_description,book_image,username, availability)
-              VALUES ('$book_name', '$author_name','$category','$price','$bookType','$quantity','$description','$bookImage','$username','$availability')";
-
-            if ($conn->query($insertQuery) === TRUE) {
-                $listingMessage = "Book listed successfully.";
-
-                unset($_POST['book_name']);
-                unset($_POST['author_name']);
-                unset($_POST['book_description']);
-                unset($_POST['category']);
-                unset($_POST['price']);
-                unset($_POST['quantity']);
-                unset($_POST['book_type']);
-                unset($_POST['bookImage']);
-
-            } else {
-                $listingMessage = "Error: " . $insertQuery . "<br>" . $conn->error;
-            }
-        } else {
-            $listingMessage = "Sorry, there was an error uploading your file.";
-        }
+        $listingMessage = "Sorry, there was an error uploading your file.";
     }
 }
+
 $_SESSION['listingMessage'] = $listingMessage;
 
-// Function to resize the uploaded image
-function resizeImage($imagePath, $width, $height) {
-    list($origWidth, $origHeight) = getimagesize($imagePath);
-
-    $imageType = exif_imagetype($imagePath);
-
-    // Load image
-    switch ($imageType) {
-        case IMAGETYPE_JPEG:
-            $image = imagecreatefromjpeg($imagePath);
-            break;
-        case IMAGETYPE_PNG:
-            $image = imagecreatefrompng($imagePath);
-            break;
-        case IMAGETYPE_GIF:
-            $image = imagecreatefromgif($imagePath);
-            break;
-        default:
-            return false;
-    }
-
-    // Calculate thumbnail size
-    $widthRatio = $width / $origWidth;
-    $heightRatio = $height / $origHeight;
-
-    if ($widthRatio > $heightRatio) {
-        $newWidth = $width;
-        $newHeight = $origHeight * ($height / $origHeight);
-    } else {
-        $newWidth = $origWidth * ($width / $origWidth);
-        $newHeight = $height;
-    }
-
-    // Create a new image and resize to the specified width and height
-    $thumb = imagecreatetruecolor($newWidth, $newHeight);
-    imagecopyresampled($thumb, $image, 0, 0, 0, 0, $newWidth, $newHeight, $origWidth, $origHeight);
-
-    // Save the resized image to the same path
-    switch ($imageType) {
-        case IMAGETYPE_JPEG:
-            imagejpeg($thumb, $imagePath);
-            break;
-        case IMAGETYPE_PNG:
-            imagepng($thumb, $imagePath);
-            break;
-        case IMAGETYPE_GIF:
-            imagegif($thumb, $imagePath);
-            break;
-        default:
-            return false;
-    }
-
-    return true;
-}
-
-$conn->close();
+$conn = null; // Close the connection
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
