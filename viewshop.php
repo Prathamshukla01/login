@@ -1,6 +1,5 @@
 <?php
-include 'config.php';
-include 'custboiler.php';
+
 ?>
 <!DOCTYPE html>
 <html>
