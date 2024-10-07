@@ -2,34 +2,42 @@
 session_start();
 
 // Database connection details
-$dbHost = "Localhost";
-$dbUser = "root";
-$dbPass = "";
-$dbName = "login";
+$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
+$dbUser = "azure"; // Your Azure username
+$dbPass = "bookhives@123"; // Your Azure password
+$dbName = "bookhivesdb"; // Your Azure database name
 
-$conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    // Create a PDO connection
+    $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
 }
 
+// Initialize registration message
 $registrationMessage = '';
 
 if (isset($_POST['register'])) {
     // Registration form submitted
-    $username = mysqli_real_escape_string($conn, $_POST['username']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
+    $username = htmlspecialchars($_POST['username']);
+    $email = htmlspecialchars($_POST['email']);
 
     // Check if the username already exists in the database
-    $checkUsernameQuery = "SELECT * FROM users WHERE username = '$username'";
-    $result = $conn->query($checkUsernameQuery);
-    if ($result->num_rows > 0) {
+    $checkUsernameQuery = "SELECT * FROM users WHERE username = :username";
+    $stmt = $conn->prepare($checkUsernameQuery);
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
+
+    if ($stmt->rowCount() > 0) {
         $registrationMessage = 'Username already exists. Please choose a different username.';
     } else {
-        $checkEmailQuery = "SELECT * FROM users WHERE email = '$email'";
-        $result = $conn->query($checkEmailQuery);
-    
-        if ($result->num_rows > 0) {
+        $checkEmailQuery = "SELECT * FROM users WHERE email = :email";
+        $stmt = $conn->prepare($checkEmailQuery);
+        $stmt->bindParam(':email', $email);
+        $stmt->execute();
+
+        if ($stmt->rowCount() > 0) {
             $registrationMessage = 'Email address already exists. Please use a different email address.';
         } else {
             // Continue with registration process
@@ -41,43 +49,43 @@ if (isset($_POST['register'])) {
             } elseif ($cpassword !== $password) {
                 $registrationMessage = 'Confirm password not matched!';
             } else {
-                $password = password_hash($password, PASSWORD_DEFAULT);
+                $passwordHash = password_hash($password, PASSWORD_DEFAULT);
 
                 $userType = $_POST['user_type'];
-                $firstName = isset($_POST['first_name']) ? $_POST['first_name'] : '';
-                $lastName = isset($_POST['last_name']) ? $_POST['last_name'] : '';
-                $phone = isset($_POST['phone']) ? $_POST['phone'] : '';
-                $address = isset($_POST['address']) ? $_POST['address'] : '';
-                $city = isset($_POST['city']) ? $_POST['city'] : '';
-                $state = isset($_POST['state']) ? $_POST['state'] : '';
-                $pincode = isset($_POST['pincode']) ? $_POST['pincode'] : '';
-                $email = isset($_POST['email']) ? $_POST['email'] : '';
-                $shopName = isset($_POST['shop_name']) ? $_POST['shop_name'] : '';
-                $shopLocation = isset($_POST['shop_location']) ? $_POST['shop_location'] : '';
+                $firstName = htmlspecialchars($_POST['first_name']);
+                $lastName = htmlspecialchars($_POST['last_name']);
+                $phone = htmlspecialchars($_POST['phone']);
+                $address = htmlspecialchars($_POST['address']);
+                $city = htmlspecialchars($_POST['city']);
+                $state = htmlspecialchars($_POST['state']);
+                $pincode = htmlspecialchars($_POST['pincode']);
+                $shopName = htmlspecialchars($_POST['shop_name']);
+                $shopLocation = htmlspecialchars($_POST['shop_location']);
 
-                // Validate required fields based on user type
-                if (empty($username) || empty($password) || empty($userType) || empty($firstName) || empty($lastName) || empty($phone) || empty($address) || empty($city) || empty($state) || empty($pincode) || (empty($email) && $userType == 'customer') || (empty($shopName) && empty($shopLocation) && $userType == 'shopowner')) {
-                    $registrationMessage = 'All fields are required. Please fill in all the fields';
-                } elseif (strlen($phone) !== 10 || !ctype_digit($phone)) {
-                    $registrationMessage = 'Phone number must be exactly 10 digits and contain only numeric digits.';
-                } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $registrationMessage = 'Invalid email address. Please enter a valid email address.';
+                $insertQuery = "INSERT INTO users (username, password, user_type, first_name, last_name, phone, address, city, state, pincode, email, shop_name, shop_location) 
+                                VALUES (:username, :password, :user_type, :first_name, :last_name, :phone, :address, :city, :state, :pincode, :email, :shop_name, :shop_location)";
+                $stmt = $conn->prepare($insertQuery);
+
+                if ($stmt->execute([
+                    ':username' => $username,
+                    ':password' => $passwordHash,
+                    ':user_type' => $userType,
+                    ':first_name' => $firstName,
+                    ':last_name' => $lastName,
+                    ':phone' => $phone,
+                    ':address' => $address,
+                    ':city' => $city,
+                    ':state' => $state,
+                    ':pincode' => $pincode,
+                    ':email' => $email,
+                    ':shop_name' => $shopName,
+                    ':shop_location' => $shopLocation
+                ])) {
+                    $registrationMessage = "Registration successful. You can now log in.";
+                    header("Location: login.php");
+                    exit();
                 } else {
-                    // Insert user data into the database
-                    $insertQuery = "INSERT INTO users (username, password, user_type, first_name, last_name, phone, address, city, state, pincode, email, shop_name, shop_location)
-                                    VALUES ('$username', '$password', '$userType', '$firstName', '$lastName', '$phone', '$address', '$city', '$state', '$pincode', '$email', '$shopName', '$shopLocation')";
-
-                    if ($conn->query($insertQuery) === TRUE) {
-                        $registrationMessage = "Registration successful. You can now log in.";
-
-                        // Unset post variables after successful registration
-                        unset($_POST['first_name'], $_POST['last_name'], $_POST['user_type'], $_POST['email'], $_POST['username'], $_POST['phone'], $_POST['shop_name'], $_POST['shop_location'], $_POST['state'], $_POST['city'], $_POST['state'], $_POST['pincode'], $_POST['address']);
-
-                        header("Location: login.php");
-                        exit();
-                    } else {
-                        $registrationMessage = "Error: " . $insertQuery . "<br>" . $conn->error;
-                    }
+                    $registrationMessage = "Error: Could not register the user.";
                 }
             }
         }
@@ -85,7 +93,6 @@ if (isset($_POST['register'])) {
 }
 
 $_SESSION['registrationMessage'] = $registrationMessage;
-$conn->close();
 ?>
 
 <!DOCTYPE html>
