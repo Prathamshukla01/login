@@ -1,15 +1,18 @@
 <?php
 session_start();
 
-$dbHost = "Localhost";
-$dbUser = "root";
-$dbPass = "";
-$dbName = "login";
+// Database connection details
+$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
+$dbUser = "azure"; // Your Azure username
+$dbPass = "bookhives@123"; // Your Azure password
+$dbName = "bookhivesdb"; // Your Azure database name
 
-$conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    // Create a PDO connection
+    $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
 }
 
 $loginMessage = '';
@@ -19,41 +22,40 @@ if (isset($_POST['login'])) {
     $username = $_POST['username'];
     $password = $_POST['password'];
 
-    $loginQuery = "SELECT * FROM users WHERE username = '$username'";
-    $result = $conn->query($loginQuery);
+    // Use prepared statements to avoid SQL injection
+    $loginQuery = "SELECT * FROM users WHERE username = :username";
+    $stmt = $conn->prepare($loginQuery);
+    $stmt->bindParam(':username', $username);
+    $stmt->execute();
 
-    if ($result) {
-        if ($result->num_rows > 0) {
-            $row = $result->fetch_assoc();
+    if ($stmt->rowCount() > 0) {
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-            if (password_verify($password, $row['password'])) {
-                // Password is correct, set session variables and redirect to respective dashboards
-                $_SESSION['username'] = $row['username'];
-                $_SESSION['user_type'] = $row['user_type'];
+        if (password_verify($password, $row['password'])) {
+            // Password is correct, set session variables and redirect to respective dashboards
+            $_SESSION['username'] = $row['username'];
+            $_SESSION['user_type'] = $row['user_type'];
 
-                if ($row['user_type'] == 'shopowner') {
-                    header("Location: shop.php");
-                    // Redirect to shopowner dashboard
-                } elseif ($row['user_type'] == 'customer') {
-                    header("Location: cust.php");
-                    // Redirect to customer dashboard
-                } else {
-                    $loginMessage = 'Invalid user type. Please contact support.';
-                }
-
-                exit();
+            if ($row['user_type'] == 'shopowner') {
+                header("Location: shop.php");
+                // Redirect to shopowner dashboard
+            } elseif ($row['user_type'] == 'customer') {
+                header("Location: cust.php");
+                // Redirect to customer dashboard
             } else {
-                $loginMessage = 'Incorrect password. Please try again.';
+                $loginMessage = 'Invalid user type. Please contact support.';
             }
+
+            exit();
         } else {
-            $loginMessage = 'Username not found. Please check your username and try again.';
+            $loginMessage = 'Incorrect password. Please try again.';
         }
     } else {
-        $loginMessage = 'Error in the login query: ' . $conn->error;
+        $loginMessage = 'Username not found. Please check your username and try again.';
     }
 }
 
-$conn->close();
+$conn = null; // Close the connection
 ?>
 
 <!DOCTYPE html>
@@ -72,7 +74,6 @@ $conn->close();
             flex-direction: column;
             height: 100vh;
             overflow: hidden; /* Prevent scrolling on smaller screens */
-            
         }
 
         form {
@@ -82,12 +83,12 @@ $conn->close();
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             max-width: 600px;
             width: 50%;
-            margin-bottom:20px;
+            margin-bottom: 20px;
             backdrop-filter: blur(5px);
         }
 
-        h2{
-            text-align:center;
+        h2 {
+            text-align: center;
         }
         label {
             display: block;
@@ -104,15 +105,6 @@ $conn->close();
             border-radius: 4px;
         }
 
-        select {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 2px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-        }
-
         input[type="submit"] {
             background-color: orange;
             color: #fff;
@@ -122,7 +114,7 @@ $conn->close();
             cursor: pointer;
         }
 
-        input[type="submit"]:hover{
+        input[type="submit"]:hover {
             background-color: #ffc107;
         }
 
@@ -133,7 +125,7 @@ $conn->close();
             color: #3c763d;
             display: <?php echo empty($loginMessage) ? 'none' : 'block'; ?>;
         }
-        #register-link{
+        #register-link {
             text-align: center; 
             margin-top: 10px; 
         }
@@ -144,7 +136,7 @@ $conn->close();
     <form method="post" action="login.php" autocomplete="off">
         <h2>Login</h2>
         <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>"autocomplete="username">
+        <input type="text" id="username" name="username" required value="<?php echo isset($_POST['username']) ? htmlspecialchars($_POST['username']) : ''; ?>" autocomplete="username">
         
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required autocomplete="current-password">
@@ -153,8 +145,7 @@ $conn->close();
 
         <div id="login-message"><?php echo $loginMessage; ?></div>
     </form>
-    <div id="register-link">Don't have an account? Click here to <a href="register.php">register</a>
-    </div>
+    <div id="register-link">Don't have an account? Click here to <a href="register.php">register</a></div>
 
 </body>
 </html>
