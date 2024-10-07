@@ -1,16 +1,19 @@
 <?php
 include('shopboiler.php');
 // Database connection details
-$dbHost = "localhost";
-$dbUser = "root";
-$dbPass = "";
-$dbName = "login";
+$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
+$dbUser = "azure"; // Your Azure username
+$dbPass = "bookhives@123"; // Your Azure password
+$dbName = "bookhivesdb"; // Your Azure database name
 
-$conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    // Create a PDO connection
+    $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
 }
+
 $username = $_SESSION['username'];
 ?>
 
@@ -21,18 +24,18 @@ $username = $_SESSION['username'];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
     <style>
-        
         .dashboard {
             width: 80%;
             max-width: 1200px;
         }
 
-        .title{
-            text-align:center;
-            text-transform:uppercase;
-            color:black;
+        .title {
+            text-align: center;
+            text-transform: uppercase;
+            color: black;
             font-size: 2rem;
         }
+        
         .box-container {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -51,15 +54,14 @@ $username = $_SESSION['username'];
 
         h3 {
             margin: 0;
-            font-size:1.5rem;
-            color:black;
+            font-size: 1.5rem;
+            color: black;
         }
 
         p {      
             margin-top: 1.5rem;
-            padding:1rem;
-            font-size:1rem;
-            
+            padding: 1rem;
+            font-size: 1rem;
             color: orange;
             background-color: #e2e5de;  
         }
@@ -76,29 +78,27 @@ $username = $_SESSION['username'];
         <h1 class="title">Dashboard</h1>
         <div class="box-container">
            
-
            <div class="box">
                 <?php
                 $total_completed = 0;
-                $select_completed = mysqli_query($conn, "SELECT total_price FROM custorders WHERE payment_status='completed' && username='$username'") or die('Query failed');
+                $select_completed = $conn->prepare("SELECT total_price FROM custorders WHERE payment_status='completed' AND username=:username");
+                $select_completed->bindParam(':username', $username);
+                $select_completed->execute();
 
-                if (mysqli_num_rows($select_completed) > 0) {
-                    while ($fetch_completed = mysqli_fetch_assoc($select_completed)) {
-                        $total_price = $fetch_completed['total_price'];
-                        $total_completed += $total_price;
-                    }
+                while ($fetch_completed = $select_completed->fetch(PDO::FETCH_ASSOC)) {
+                    $total_completed += $fetch_completed['total_price'];
                 }
                 ?>
-                <h3><?php echo $total_completed; ?></h3>
+                <h3><?php echo number_format($total_completed, 2); ?> &#8377</h3>
                 <p>Completed payments</p>
             </div>
             
             <div class="box">
                 <?php
-                
-                $select_pending = mysqli_query($conn, "SELECT * FROM custorders WHERE payment_status='pending' && shopowner_username='$username'") or die('Query failed');
-                $number_of_pendings=mysqli_num_rows($select_pending);
-                
+                $select_pending = $conn->prepare("SELECT * FROM custorders WHERE payment_status='pending' AND shopowner_username=:username");
+                $select_pending->bindParam(':username', $username);
+                $select_pending->execute();
+                $number_of_pendings = $select_pending->rowCount();
                 ?>
                 <h3><?php echo $number_of_pendings; ?></h3>
                 <p>Total Pending orders</p>
@@ -106,9 +106,10 @@ $username = $_SESSION['username'];
 
             <div class="box">
                 <?php
-                
-                    $select_orders = mysqli_query($conn, "SELECT * FROM custorders WHERE username = '$username' && payment_status='confirmed'") or die('query failed');
-                    $number_of_orders=mysqli_num_rows($select_orders);
+                $select_orders = $conn->prepare("SELECT * FROM custorders WHERE username=:username AND payment_status='confirmed'");
+                $select_orders->bindParam(':username', $username);
+                $select_orders->execute();
+                $number_of_orders = $select_orders->rowCount();
                 ?>
                 <h3><?php echo $number_of_orders; ?></h3>
                 <p>Completed Orders</p>
@@ -116,42 +117,36 @@ $username = $_SESSION['username'];
 
             <div class="box">
                 <?php
-                    $select_books = mysqli_query($conn, "SELECT * FROM books WHERE username= '$username'") or die('query failed');
-                    $number_of_books=mysqli_num_rows($select_books);
+                $select_books = $conn->prepare("SELECT * FROM books WHERE username=:username");
+                $select_books->bindParam(':username', $username);
+                $select_books->execute();
+                $number_of_books = $select_books->rowCount();
                 ?>
                 <h3><?php echo $number_of_books; ?></h3>
                 <p>Books added</p>
             </div>
 
-           <!-- <div class="box">
-                <//?php
-                    $select_messages = mysqli_query($conn, "SELECT * FROM message WHERE username= '$username'") or die('query failed');
-                    $number_of_messages=mysqli_num_rows($select_messages);
-                ?>
-                <h3><//?php echo $number_of_messages; ?></h3>
-                <p>New messages</p>
-            </div>-->
-            
             <div class="box">
                 <?php
                 // Count books that are out of stock
-                $select_out_of_stock = mysqli_query($conn, "SELECT * FROM books WHERE availability='Out of Stock' && username='$username'")or die('query failed');;
-                $out_of_stock_count=mysqli_num_rows($select_out_of_stock);
-            
+                $select_out_of_stock = $conn->prepare("SELECT * FROM books WHERE availability='Out of Stock' AND username=:username");
+                $select_out_of_stock->bindParam(':username', $username);
+                $select_out_of_stock->execute();
+                $out_of_stock_count = $select_out_of_stock->rowCount();
                 ?>
                 <h3><?php echo $out_of_stock_count; ?></h3>
                 <p>Out of Stock Books</p>
             </div>
+            
             <div class="box">
                 <?php
                 $total_pendings = 0;
-                $select_pending = mysqli_query($conn, "SELECT total_price FROM custorders WHERE payment_status='pending' && shopowner_username='$username'") or die('Query failed');
+                $select_pending = $conn->prepare("SELECT total_price FROM custorders WHERE payment_status='pending' AND shopowner_username=:username");
+                $select_pending->bindParam(':username', $username);
+                $select_pending->execute();
 
-                if (mysqli_num_rows($select_pending) > 0) {
-                    while ($fetch_pendings = mysqli_fetch_assoc($select_pending)) {
-                        $total_price = $fetch_pendings['total_price'];
-                        $total_pendings += $total_price;
-                    }
+                while ($fetch_pendings = $select_pending->fetch(PDO::FETCH_ASSOC)) {
+                    $total_pendings += $fetch_pendings['total_price'];
                 }
                 ?>
                 <h3><?php echo number_format($total_pendings, 2); ?> &#8377</h3>
@@ -164,6 +159,5 @@ $username = $_SESSION['username'];
 </html>
 
 <?php
-$conn->close();
+$conn = null; // Close the connection
 ?>
- 
