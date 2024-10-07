@@ -1,4 +1,4 @@
-<?php
+<?php 
 session_start();
 // Check if the user is logged in
 if (!isset($_SESSION['username'])) {
@@ -13,17 +13,15 @@ if ($_SESSION['user_type'] !== 'customer') {
 }
 
 // Database connection details
-$dbHost = "Localhost";
-$dbUser = "root";
-$dbPass = "";
-$dbName = "login";
+$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
+$dbUser = "azure"; // Your Azure username
+$dbPass = "bookhives@123"; // Your Azure password
+$dbName = "bookhivesdb"; // Your Azure database name
 
-$conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName);
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+try {
+    $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+    $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
 }
-
-
-
 ?>
