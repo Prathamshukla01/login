@@ -12,7 +12,7 @@ if ($_SESSION['user_type'] !== 'shopowner') {
     header("Location: cust.php"); // Redirect unauthorized users
     exit();
 }
-
+?>
 
 
 ?>
