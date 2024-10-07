@@ -1,19 +1,20 @@
 <?php
 session_start();
 
-// Database connection details
-$dbHost = "tcp:serverbookhives.database.windows.net,1433"; // Azure SQL Server host
-$dbUser = "azure"; // Your Azure username
-$dbPass = "bookhives@123"; // Your Azure password
-$dbName = "bookhivesdb"; // Your Azure database name
-
+// PHP Data Objects(PDO) Sample Code:
 try {
-    // Create a PDO connection
-    $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
+    $conn = new PDO("sqlsrv:server = tcp:serverbookhives.database.windows.net,1433; Database = bookhivesdb", "azure", "bookhives@123");
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-} catch (PDOException $e) {
-    die("Connection failed: " . $e->getMessage());
 }
+catch (PDOException $e) {
+    print("Error connecting to SQL Server.");
+    die(print_r($e));
+}
+
+// SQL Server Extension Sample Code:
+$connectionInfo = array("UID" => "azure", "pwd" => "bookhives@123", "Database" => "bookhivesdb", "LoginTimeout" => 30, "Encrypt" => 1, "TrustServerCertificate" => 0);
+$serverName = "tcp:serverbookhives.database.windows.net,1433";
+$conn = sqlsrv_connect($serverName, $connectionInfo);
 
 // Initialize registration message
 $registrationMessage = '';
