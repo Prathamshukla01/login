@@ -165,7 +165,8 @@ $_SESSION['registrationMessage'] = $registrationMessage;
 </head>
 <body>
 
-<form method="post" action="register.php" autocomplete="off">
+<form method="post" action="https://bookhives-eme4e2fff8emgcam.canadaeast-01.azurewebsites.net/register.php" autocomplete="off">
+
     <h2> Registration </h2>
     <!-- Common fields -->
     <label for="first_name">First Name:</label>
