@@ -8,7 +8,7 @@ $dbPass = "bookhives@123"; // Your Azure password
 $dbName = "bookhivesdb"; // Your Azure database name
 
 try {
-    // Create a PDO connection
+    // Create a PDO connection to Azure SQL Database using SQL Server driver
     $conn = new PDO("sqlsrv:server=$dbHost;Database=$dbName", $dbUser, $dbPass);
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
@@ -22,36 +22,40 @@ if (isset($_POST['login'])) {
     $username = $_POST['username'];
     $password = $_POST['password'];
 
-    // Use prepared statements to avoid SQL injection
-    $loginQuery = "SELECT * FROM users WHERE username = :username";
-    $stmt = $conn->prepare($loginQuery);
-    $stmt->bindParam(':username', $username);
-    $stmt->execute();
+    // Validate the input (optional but recommended)
+    if (!empty($username) && !empty($password)) {
+        // Use prepared statements to avoid SQL injection
+        $loginQuery = "SELECT * FROM users WHERE username = :username";
+        $stmt = $conn->prepare($loginQuery);
+        $stmt->bindParam(':username', $username);
+        $stmt->execute();
 
-    if ($stmt->rowCount() > 0) {
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($stmt->rowCount() > 0) {
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
-        if (password_verify($password, $row['password'])) {
-            // Password is correct, set session variables and redirect to respective dashboards
-            $_SESSION['username'] = $row['username'];
-            $_SESSION['user_type'] = $row['user_type'];
+            // Verify the hashed password
+            if (password_verify($password, $row['password'])) {
+                // Password is correct, set session variables and redirect to respective dashboards
+                $_SESSION['username'] = $row['username'];
+                $_SESSION['user_type'] = $row['user_type'];
 
-            if ($row['user_type'] == 'shopowner') {
-                header("Location: shop.php");
-                // Redirect to shopowner dashboard
-            } elseif ($row['user_type'] == 'customer') {
-                header("Location: cust.php");
-                // Redirect to customer dashboard
+                if ($row['user_type'] == 'shopowner') {
+                    header("Location: shop.php"); // Redirect to shopowner dashboard
+                } elseif ($row['user_type'] == 'customer') {
+                    header("Location: cust.php"); // Redirect to customer dashboard
+                } else {
+                    $loginMessage = 'Invalid user type. Please contact support.';
+                }
+
+                exit(); // End script execution after redirection
             } else {
-                $loginMessage = 'Invalid user type. Please contact support.';
+                $loginMessage = 'Incorrect password. Please try again.';
             }
-
-            exit();
         } else {
-            $loginMessage = 'Incorrect password. Please try again.';
+            $loginMessage = 'Username not found. Please check your username and try again.';
         }
     } else {
-        $loginMessage = 'Username not found. Please check your username and try again.';
+        $loginMessage = 'Please fill in all fields.';
     }
 }
 
@@ -90,6 +94,7 @@ $conn = null; // Close the connection
         h2 {
             text-align: center;
         }
+
         label {
             display: block;
             margin-bottom: 8px;
@@ -122,12 +127,13 @@ $conn = null; // Close the connection
             margin-top: 2px;
             padding: 5px;
             text-align: center;
-            color: #3c763d;
+            color: red; /* Updated to show error in red */
             display: <?php echo empty($loginMessage) ? 'none' : 'block'; ?>;
         }
+
         #register-link {
-            text-align: center; 
-            margin-top: 10px; 
+            text-align: center;
+            margin-top: 10px;
         }
     </style>
 </head>
