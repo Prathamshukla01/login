@@ -5,16 +5,9 @@ session_start();
 try {
     $conn = new PDO("sqlsrv:server = tcp:serverbookhives.database.windows.net,1433; Database = bookhivesdb", "azure", "bookhives@123");
     $conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Error connecting to SQL Server: " . $e->getMessage());
 }
-catch (PDOException $e) {
-    print("Error connecting to SQL Server.");
-    die(print_r($e));
-}
-
-// SQL Server Extension Sample Code:
-$connectionInfo = array("UID" => "azure", "pwd" => "bookhives@123", "Database" => "bookhivesdb", "LoginTimeout" => 30, "Encrypt" => 1, "TrustServerCertificate" => 0);
-$serverName = "tcp:serverbookhives.database.windows.net,1433";
-$conn = sqlsrv_connect($serverName, $connectionInfo);
 
 // Initialize registration message
 $registrationMessage = '';
@@ -60,8 +53,8 @@ if (isset($_POST['register'])) {
                 $city = htmlspecialchars($_POST['city']);
                 $state = htmlspecialchars($_POST['state']);
                 $pincode = htmlspecialchars($_POST['pincode']);
-                $shopName = htmlspecialchars($_POST['shop_name']);
-                $shopLocation = htmlspecialchars($_POST['shop_location']);
+                $shopName = htmlspecialchars($_POST['shop_name'] ?? '');
+                $shopLocation = htmlspecialchars($_POST['shop_location'] ?? '');
 
                 $insertQuery = "INSERT INTO users (username, password, user_type, first_name, last_name, phone, address, city, state, pincode, email, shop_name, shop_location) 
                                 VALUES (:username, :password, :user_type, :first_name, :last_name, :phone, :address, :city, :state, :pincode, :email, :shop_name, :shop_location)";
@@ -210,35 +203,38 @@ $_SESSION['registrationMessage'] = $registrationMessage;
     <input type="email" id="email" name="email" value="<?= isset($_POST['email']) ? htmlspecialchars($_POST['email']) : ''; ?>" autocomplete="email" required>
 
     <!-- Shop owner fields -->
-    <div id="shopowner_fields" style="display:none;">
+    <div id="shop_owner_fields" style="display: none;">
         <label for="shop_name">Shop Name:</label>
         <input type="text" id="shop_name" name="shop_name" value="<?= isset($_POST['shop_name']) ? htmlspecialchars($_POST['shop_name']) : ''; ?>">
-        <br>
+
         <label for="shop_location">Shop Location:</label>
         <input type="text" id="shop_location" name="shop_location" value="<?= isset($_POST['shop_location']) ? htmlspecialchars($_POST['shop_location']) : ''; ?>">
-        <br>
     </div>
 
     <input type="submit" name="register" value="Register">
-    <div id="registration-message"><?= isset($_SESSION['registrationMessage']) ? $_SESSION['registrationMessage'] : ''; ?></div>
+
+    <div id="registration-message">
+        <?php if (!empty($registrationMessage)) {
+            echo $registrationMessage;
+        } ?>
+    </div>
+
+    <div id="login-link">
+        Already have an account? <a href="login.php">Login here</a>
+    </div>
 </form>
 
-<div id="login-link">
-    Already have an account? <a href="login.php">login</a>
-</div>
-
-<!-- JavaScript to toggle visibility of fields based on user type -->
 <script>
     document.getElementById('user_type').addEventListener('change', function () {
-        var shopownerFields = document.getElementById('shopowner_fields');
+        var userType = this.value;
+        var shopOwnerFields = document.getElementById('shop_owner_fields');
 
-        if (this.value === 'shopowner') {
-            shopownerFields.style.display = 'block';
+        if (userType === 'shopowner') {
+            shopOwnerFields.style.display = 'block';
         } else {
-            shopownerFields.style.display = 'none';
+            shopOwnerFields.style.display = 'none';
         }
     });
 </script>
-
 </body>
 </html>
