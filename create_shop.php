@@ -1,5 +1,5 @@
 <?php
-include 'shopboiler.php';
+//include 'shopboiler.php';
 // Database connection details
 $dbHost = "Localhost";
 $dbUser = "root";
