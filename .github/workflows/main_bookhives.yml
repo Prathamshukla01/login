@@ -62,5 +62,5 @@ jobs:
         with:
           app-name: 'bookhives'
           slot-name: 'Production'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_685E533FD78240EF83526ED9824CA56A }}
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_E01B352743514845B1E95B8833648559 }}
           package: .
