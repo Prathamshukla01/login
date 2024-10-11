@@ -632,7 +632,7 @@ footer {
             <p>Rs. 100/-</p>
           </div>
           <div class="category-box">
-            <img src=".jpg" alt="Product 2">
+            <img src="prod5.jpg" alt="Product 2">
             <p>Rs. 200/-</p>
           </div>
           <!-- Add more products as needed -->
