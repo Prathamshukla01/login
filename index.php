@@ -613,7 +613,7 @@ footer {
     <h2>Explore Categories</h2>
     <div class="category-grid">
       <div class="category">
-        <h3>Clothing</h3>
+        <h3>Books</h3>
         <div class="category-carousel">
           <div class="category-box">
             <img src="prod1.jpg" alt="">
@@ -621,24 +621,24 @@ footer {
           </div>
           <div class="category-box">
             <img src="prod2.jpg" alt="Product 1">
-            <p>Product Name 2</p>
+            <p>Rs. 500/-</p>
           </div>
           <div class="category-box">
             <img src="prod3.png" alt="Product 1">
-            <p>Rs. 200</p>
+            <p>Rs. 200/-</p>
           </div>
           <div class="category-box">
-            <img src="clothing-product1.jpg" alt="Product 1">
-            <p>Product Name 4</p>
+            <img src="prod4.jpg" alt="Product 1">
+            <p>Rs. 100/-</p>
           </div>
           <div class="category-box">
-            <img src="clothing-product2.jpg" alt="Product 2">
-            <p>Product Name 5</p>
+            <img src=".jpg" alt="Product 2">
+            <p>Rs. 200/-</p>
           </div>
           <!-- Add more products as needed -->
         </div>
       </div>
-      <div class="category">
+    <!--  <div class="category">
         <h3>Electronics</h3>
         <div class="category-carousel">
           <div class="category-box">
@@ -664,10 +664,10 @@ footer {
           <div class="category-box">
             <img src="electronics-product2.jpg" alt="Product 2">
             <p>Product Name 2</p>
-          </div>
+          </div>-->
           <!-- Add more products as needed -->
-        </div>
-      </div>
+       <!-- </div>-->
+     <!-- </div>-->
       <!-- Add more categories as needed -->
     </div>
   </div>
